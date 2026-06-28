@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     openai_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
+    lmstudio_base_url: str = "http://localhost:1234/v1"
 
     @property
     def api_key_set(self) -> set[str]:
