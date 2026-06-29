@@ -1,0 +1,30 @@
+rules:
+  - name: block_system_prompt_extraction
+    severity: high
+    action: block
+    patterns:
+      - "reveal your system prompt"
+      - "ignore previous instructions"
+      - "ignore all instructions"
+      - "developer message"
+      - "hidden instructions"
+      - "developer mode"
+
+  - name: block_secret_exfiltration
+    severity: critical
+    action: block
+    patterns:
+      - "api key"
+      - "password"
+      - "private key"
+      - "access token"
+
+  - name: review_tool_abuse
+    severity: medium
+    action: review
+    patterns:
+      - "send email to"
+      - "delete all"
+      - "run command"
+      - "transfer money"
+      - "drop table"
