@@ -6,6 +6,7 @@ from app.security.audit import log_event
 from app.db.database import get_db
 from sqlalchemy.orm import Session
 from app.auth.dependencies import require_api_key
+from app.security.rate_limit import enforce_rate_limit
 
 router = APIRouter(prefix="/v1/proxy", tags=["proxy"])
 
@@ -16,6 +17,8 @@ def proxy_chat(
         db: Session = Depends(get_db),
         api_key_id: str = Depends(require_api_key)
 ):
+    enforce_rate_limit(api_key_id)
+
     messages = [m.model_dump() for m in req.messages]
 
     user_text = " ".join(m["content"] for m in messages if m["role"] == "user")
