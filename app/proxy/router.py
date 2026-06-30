@@ -5,12 +5,17 @@ from app.security.policy import evaluate
 from app.security.audit import log_event
 from app.db.database import get_db
 from sqlalchemy.orm import Session
+from app.auth.dependencies import require_api_key
 
 router = APIRouter(prefix="/v1/proxy", tags=["proxy"])
 
 
 @router.post("/chat", response_model=ProxyResponse)
-def proxy_chat(req: ProxyRequest, db: Session = Depends(get_db)):
+def proxy_chat(
+        req: ProxyRequest,
+        db: Session = Depends(get_db),
+        api_key_id: str = Depends(require_api_key)
+):
     messages = [m.model_dump() for m in req.messages]
 
     user_text = " ".join(m["content"] for m in messages if m["role"] == "user")
@@ -19,7 +24,7 @@ def proxy_chat(req: ProxyRequest, db: Session = Depends(get_db)):
 
     log_event(
         db,
-        api_key_id="anonymous",
+        api_key_id=api_key_id,
         decision=decision.decision,
         risk_score=decision.risk_score,
         matched_rules=decision.matched_rules,
