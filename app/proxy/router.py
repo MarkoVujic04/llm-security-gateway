@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from app.schemas import ProxyRequest, ProxyResponse
 from app.llm.mock_provider import mock_provider
 from app.security.policy import evaluate
@@ -7,6 +7,7 @@ from app.db.database import get_db
 from sqlalchemy.orm import Session
 from app.auth.dependencies import require_api_key
 from app.security.rate_limit import enforce_rate_limit
+from app.llm.factory import get_provider
 
 router = APIRouter(prefix="/v1/proxy", tags=["proxy"])
 
@@ -43,7 +44,12 @@ def proxy_chat(
             reason="Request blocked by security policy.",
         )
 
-    content = mock_provider.chat(req.model, messages)
+    provider = get_provider(req.model)
+
+    try:
+        content = provider.chat(req.model, messages)
+    except RuntimeError:
+        raise HTTPException(status_code=502, detail="Upstream LLM error")
 
     return ProxyResponse(
         decision=decision.decision,
