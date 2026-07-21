@@ -1,4 +1,5 @@
 from app.security.scanner import Match
+from app.security.secrets import detect_secrets
 
 LOW, MEDIUM, HIGH, CRITICAL = 30, 60, 85, 100
 MAX_PROMPT_LEN = 8000
@@ -13,6 +14,10 @@ def calculate_risk(text: str, matches: list[Match]) -> int:
 
     if any(m.rule.severity == "critical" for m in matches):
         score += 15
+
+    found_secrets = detect_secrets(text)
+    if found_secrets:
+        score += 25
 
     if len(text) > MAX_PROMPT_LEN:
         score += 20

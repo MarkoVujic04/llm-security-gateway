@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import require_api_key
 from app.security.rate_limit import enforce_rate_limit
 from app.llm.factory import get_provider
+from app.security.secrets import detect_secrets, redact_secrets
 
 router = APIRouter(prefix="/v1/proxy", tags=["proxy"])
 
@@ -51,9 +52,22 @@ def proxy_chat(
     except RuntimeError:
         raise HTTPException(status_code=502, detail="Upstream LLM error")
 
+    leaked = detect_secrets(content)
+    if leaked:
+        log_event(
+            db,
+            api_key_id=api_key_id,
+            decision="REVIEW",
+            risk_score=90,
+            matched_rules=[f"output_secret:{s}" for s in leaked],
+            prompt=user_text,
+            reason="Secret detected in model output",
+        )
+        content = redact_secrets(content)
+
     return ProxyResponse(
         decision=decision.decision,
         risk_score=decision.risk_score,
         content=content,
-        reason=decision.reason
+        reason=decision.reason,
     )
