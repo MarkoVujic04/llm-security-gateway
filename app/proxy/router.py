@@ -9,6 +9,7 @@ from app.auth.dependencies import require_api_key
 from app.security.rate_limit import enforce_rate_limit
 from app.llm.factory import get_provider
 from app.security.secrets import detect_secrets, redact_secrets
+from app.security.tools import check_tools
 
 router = APIRouter(prefix="/v1/proxy", tags=["proxy"])
 
@@ -45,6 +46,25 @@ def proxy_chat(
             reason="Request blocked by security policy.",
         )
 
+    if req.tools:
+        ok, offending = check_tools(req.tools)
+        if not ok:
+            log_event(
+                db,
+                api_key_id=api_key_id,
+                decision="BLOCK",
+                risk_score=95,
+                matched_rules=[f"tool:{t}" for t in offending],
+                prompt=user_text,
+                reason=f"Disallowed tools: {offending}",
+            )
+            return ProxyResponse(
+                decision="BLOCK",
+                risk_score=95,
+                content=None,
+                reason="Requested tool is not permitted.",
+            )
+
     provider = get_provider(req.model)
 
     try:
@@ -64,6 +84,10 @@ def proxy_chat(
             reason="Secret detected in model output",
         )
         content = redact_secrets(content)
+
+    out_decision = evaluate(content)
+    if out_decision.decision == "BLOCK":
+        content = "[response withheld by security policy]"
 
     return ProxyResponse(
         decision=decision.decision,

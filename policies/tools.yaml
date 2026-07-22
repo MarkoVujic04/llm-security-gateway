@@ -1,0 +1,10 @@
+allowed_tools:
+  - search_web
+  - get_weather
+  - read_document
+
+denied_tools:
+  - delete_all
+  - run_shell_command
+  - transfer_money
+  - send_email
