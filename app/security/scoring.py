@@ -1,5 +1,6 @@
 from app.security.scanner import Match
 from app.security.secrets import detect_secrets
+from app.security.layered import layered_score
 
 LOW, MEDIUM, HIGH, CRITICAL = 30, 60, 85, 100
 MAX_PROMPT_LEN = 8000
@@ -21,6 +22,9 @@ def calculate_risk(text: str, matches: list[Match]) -> int:
 
     if len(text) > MAX_PROMPT_LEN:
         score += 20
+
+    adaptive_risk, adaptive_reason = layered_score(text)
+    score = max(score, adaptive_risk)
 
     return max(0, min(100, score))
 
