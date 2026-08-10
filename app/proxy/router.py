@@ -10,6 +10,7 @@ from app.security.rate_limit import enforce_rate_limit
 from app.llm.factory import get_provider
 from app.security.secrets import detect_secrets, redact_secrets
 from app.security.tools import check_tools
+from app.security.session import record_turn, cumulative_risk
 
 router = APIRouter(prefix="/v1/proxy", tags=["proxy"])
 
@@ -27,6 +28,28 @@ def proxy_chat(
     user_text = " ".join(m["content"] for m in messages if m["role"] == "user")
 
     decision = evaluate(user_text)
+
+    session_id = req.session_id or api_key_id
+    record_turn(session_id, user_text, decision.risk_score)
+    session_risk = cumulative_risk(session_id)
+    effective_risk = max(decision.risk_score, session_risk)
+
+    final_decision = decision.decision
+    if final_decision == "ALLOW" and effective_risk >= 61:
+        final_decision = "REVIEW"
+    if effective_risk >= 86:
+        final_decision = "BLOCK"
+
+    if final_decision == "BLOCK":
+        log_event(
+            db, api_key_id=api_key_id, decision="BLOCK",
+            risk_score=effective_risk, matched_rules=decision.matched_rules,
+            prompt=user_text, reason=f"Session risk escalation ({session_risk})",
+        )
+        return ProxyResponse(
+            decision="BLOCK", risk_score=effective_risk,
+            content=None, reason="Request blocked by security policy.",
+        )
 
     log_event(
         db,
@@ -90,8 +113,8 @@ def proxy_chat(
         content = "[response withheld by security policy]"
 
     return ProxyResponse(
-        decision=decision.decision,
-        risk_score=decision.risk_score,
+        decision=final_decision,
+        risk_score=effective_risk,
         content=content,
         reason=decision.reason,
     )

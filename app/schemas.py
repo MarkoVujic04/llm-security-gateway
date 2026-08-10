@@ -10,6 +10,7 @@ class ProxyRequest(BaseModel):
     model: str = "mock-model"
     messages: list[ChatMessage]
     tools: list[dict] | None = None
+    session_id: str | None = None
 
 
 class ProxyResponse(BaseModel):
