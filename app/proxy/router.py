@@ -11,6 +11,7 @@ from app.llm.factory import get_provider
 from app.security.secrets import detect_secrets, redact_secrets
 from app.security.tools import check_tools
 from app.security.session import record_turn, cumulative_risk
+from app.security.output_safety import scan_output_safety
 
 router = APIRouter(prefix="/v1/proxy", tags=["proxy"])
 
@@ -107,6 +108,19 @@ def proxy_chat(
             reason="Secret detected in model output",
         )
         content = redact_secrets(content)
+
+    dangerous = scan_output_safety(content)
+    if dangerous:
+        log_event(
+            db,
+            api_key_id=api_key_id,
+            decision="BLOCK",
+            risk_score=95,
+            matched_rules=[f"output_unsafe:{d}" for d in dangerous],
+            prompt=user_text,
+            reason=f"Unsafe output payload: {dangerous}"
+        )
+        content = "[response withheld: unsafe content]"
 
     out_decision = evaluate(content)
     if out_decision.decision == "BLOCK":
