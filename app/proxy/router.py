@@ -13,6 +13,7 @@ from app.security.tools import check_tools
 from app.security.session import record_turn, cumulative_risk
 from app.security.output_safety import scan_output_safety
 from app.security.content_injection import scan_untrusted_content
+from app.security.misinformation import scan_misinformation
 
 router = APIRouter(prefix="/v1/proxy", tags=["proxy"])
 
@@ -145,6 +146,24 @@ def proxy_chat(
     out_decision = evaluate(content)
     if out_decision.decision == "BLOCK":
         content = "[response withheld by security policy]"
+
+    if not content.startswith("[response withheld]"):
+        flagged_claims = scan_misinformation(content)
+        if flagged_claims:
+            log_event(
+                db,
+                api_key_id=api_key_id,
+                decision="REVIEW",
+                risk_score=40,
+                matched_rules=[f"misinformation:{c}" for c in flagged_claims],
+                prompt=user_text,
+                reason=f"Unverifiable claims flagged: {flagged_claims}",
+            )
+            content += (
+                "\n\n---\n*Note: This response contains citations, statistics, or "
+                "sources that have not been verified. Confirm them independently "
+                "before relying on them.*"
+            )
 
     return ProxyResponse(
         decision=final_decision,
