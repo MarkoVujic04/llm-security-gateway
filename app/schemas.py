@@ -11,6 +11,7 @@ class ProxyRequest(BaseModel):
     messages: list[ChatMessage]
     tools: list[dict] | None = None
     session_id: str | None = None
+    untrusted_content: str | None = None
 
 
 class ProxyResponse(BaseModel):

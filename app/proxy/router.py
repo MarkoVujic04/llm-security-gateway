@@ -12,6 +12,7 @@ from app.security.secrets import detect_secrets, redact_secrets
 from app.security.tools import check_tools
 from app.security.session import record_turn, cumulative_risk
 from app.security.output_safety import scan_output_safety
+from app.security.content_injection import scan_untrusted_content
 
 router = APIRouter(prefix="/v1/proxy", tags=["proxy"])
 
@@ -87,6 +88,25 @@ def proxy_chat(
                 risk_score=95,
                 content=None,
                 reason="Requested tool is not permitted.",
+            )
+
+    if req.untrusted_content:
+        embedded = scan_untrusted_content(req.untrusted_content)
+        if embedded:
+            log_event(
+                db,
+                api_key_id=api_key_id,
+                decision="BLOCK",
+                risk_score=92,
+                matched_rules=embedded,
+                prompt=user_text,
+                reason=f"Indirect prompt injection in supplied content: {embedded}",
+            )
+            return ProxyResponse(
+                decision="BLOCK",
+                risk_score=92,
+                content=None,
+                reason="Untrusted content contained embedded instructions",
             )
 
     provider = get_provider(req.model)
