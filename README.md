@@ -47,8 +47,8 @@ The design is **secure by default**: if Redis is unavailable, rate limiting and 
 | LLM06 | Excessive Agency | ✅ | Tool-call allowlist / denylist (least privilege for tools) |
 | LLM07 | System Prompt Leakage | ✅ | Rules blocking system-prompt-extraction attempts |
 | LLM10 | Unbounded Consumption | ✅ | Redis rate limiting + prompt-length / cost-abuse checks |
-| LLM03 | Supply Chain | 🚧 | Planned: `pip-audit` dependency scanning in CI |
-| LLM09 | Misinformation | 🚧 | Planned: flagging of fabricated citations / ungrounded claims |
+| LLM03 | Supply Chain | ✅ | `pip-audit` dependency scanning in CI |
+| LLM09 | Misinformation | ✅ | Flagging of fabricated citations / ungrounded claims |
 | LLM04 / LLM08 | Poisoning / Vector weaknesses | ⬜ | Out of scope — no training or RAG pipeline in this proxy |
 
 ---
